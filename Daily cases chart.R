@@ -1,7 +1,10 @@
-setwd("C:/HY/WP other/COVID-19")
+## SET YOUR DIRECTORY ##
 libraries_needed<-c("openxlsx", "data.table", "magrittr", "stringr", "readr")
 lapply(libraries_needed,require,character.only=TRUE)
-
+## see example (without recoveries) https://en.wikipedia.org/wiki/Template:COVID-19_pandemic_data/United_States/Virginia_medical_cases_chart
+## outputs lines of code in the format
+## YYYY-MM-DD;[cumulative deaths];[cumulative recovered];[cumulative confirmed]
+# Utilities ---------------------------------------------------------------
 positive_pct<-function(rounded_pct) {
   return(paste0("+", rounded_pct, "%"))
 }
@@ -31,8 +34,8 @@ round_pct<-function(pct)  {
   }
 }
 
+# main function -----------------------------------------------------------
 chart_output<-function(province)  {
-  # province<-"Hebei"
   dt_province<-read.xlsx("Mainland CN daily cases by province.xlsx",
                          sheet=province,
                          detectDates=T) %>%
@@ -49,11 +52,14 @@ chart_output<-function(province)  {
   dt_province[,`:=`(change_cases=Total.symptomatic - lag_cases,
                     change_recoveries=Recovered - lag_recoveries,
                     change_deaths=Total.death - lag_deaths)]
-  # dt_province[,pct_change:=change_cases / Total.symptomatic * 100]
-  # dt_province[,wiki_pct_change:=sapply(pct_change, round_pct)]
   
   idx_actual_change<-grepl("change_", names(dt_province)) %>% which()
   dt_actual_change<-dt_province[,c(idx_actual_change), with=F]
+  ## determine whether code needs to be truncated, e.g. if the last update
+  ## (change in recoveries, cumulative cases, or deaths) is on 9 May 2020
+  ## (e.g. 2020-05-09;13;887;1000), and the next update does not occur until
+  ## 16 May (e.g. 2020-05-16;13;912;1000), the rows in between will be:
+  ## ;13;887;1000
   has_daily_change<-apply(dt_actual_change, MARGIN=1, function(x) any(x != 0))
   has_daily_change[1]<-T
   
